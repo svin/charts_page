@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1-rc2/jquery.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="/js/common.js"></script>
+    <script src="/js/materialize.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css">
+    <link href="/css/index.css" rel="stylesheet" type="text/css" media="all"/>
+    <link href="/css/materialize.min.css" rel="stylesheet" type="text/css" media="all"/>
+    <link href="/css/font-awesome.min.css" rel="stylesheet" type="text/css" media="all"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.8/css/materialize.min.css">
+    <script type="text/javascript">
+
+
+      google.charts.load('current', {packages:['corechart', 'table', 'gauge', 'controls', 'line']});
+      var hotelScore = new Object();
+      var namesOfHotels = [];
+
+      function getData(){
+        var jsonData = $.ajax({
+          url: '/php/taskfeed.php',
+          data: {'action':'loadSegmentRating' , loginToken: localStorage.loginToken},
+          type: 'post',
+          dataType: "json",
+          async: false,
+          beforeSend:function(){
+            $("body").innerHTML = "";
+          },
+        }).done(function(jsonData){
+
+          var avg = 0;
+          var sum = 0;
+          var divider = 0;
+          var starter = 0;
+          var place = 0;
+          var graphData = new Object();
+          var graphArray = [];
+          var zero = 0;
+          var one = 0;
+          var two = 0;
+          var three = 0;
+          var four = 0;
+          var nameOfHotel;
+          var w = 0;
+          var tempName;
+
+          function monthScore(hotelName, month, score, zero, one, two, three, four) {
+            this.hotel = hotelName;
+            this.month = month;
+            this.score = score;
+            this.zero = zero;
+            this.one = one;
+            this.two = two;
+            this.three = three;
+            this.four = four;
+          };
+
+          $.each(jsonData, function(index, hotelName){
+
+                if(hotelName == null){
+                  $("body").innerHTML = "Bad data from server";
+                };
+                  namesOfHotels[w] = index;
+                  nameOfHotel = index;
+                  w++;
+                $.each(hotelName, function(index, roomNum){
+                 $.each(roomNum, function(index, data){
+                    var graphDate;
+                    var tempDate = new Date(data.timestmp);
+                    graphYear = tempDate.getFullYear();
+                    graphMonth = tempDate.getMonth() + 1;
+                    if(graphMonth <= 9){
+                      graphDate = (graphYear + "-" + "0" + graphMonth);
+                    }else{
+                      graphDate = (graphYear + "-" + graphMonth);
+                    };
+
+                    if(starter == 0){
+                      graphData.month = graphDate;
+                      tempName = nameOfHotel;
+                      starter++;
+                    };
+
+                    if(graphData.month != graphDate){
+                      var temp = new monthScore(tempName, graphData.month, avg, zero, one, two, three, four);
+                      hotelScore[place] = temp;
+                      graphArray[graphData.month] = avg;
+                      place++;
+                      sum = 0;
+                      divider = 0;
+                      zero = 0;
+                      one = 0;
+                      two = 0;
+                      three = 0;
+                      four = 0;
+                      graphData.month = graphDate;
+                      };
+
+                    if(graphData.month == graphDate){
+                        var score = parseInt(data.score);
+                        divider++;
+                        sum = sum + score;
+                        if(sum != 0){
+                          avg = sum / divider;
+                        }else{
+                          avg = sum;
+                        };
+
+                        if(score == 0){
+                          zero++;
+                        };
+                        if(score == 1){
+                          one++;
+                        };
+                        if(score == 2){
+                          two++;
+                        };
+                        if(score == 3){
+                          three++;
+                        };
+                        if(score == 4){
+                          four++;
+                        };
+                    };
+                    if (tempName != nameOfHotel) {
+                      tempName = nameOfHotel;
+                    }
+                  });
+                    var temp = new monthScore(tempName, graphData.month, avg, zero, one, two, three, four);
+                    hotelScore[place] = temp;
+                    graphArray[graphData.month] = avg;
+                });
+
+              });
+            });
+          };
+
+      getData();
+        function callForDraw(){
+          var name;
+          for(var i = 0; i < namesOfHotels.length; i++){
+              name = namesOfHotels[i];
+              drawByName(name);
+          };
+        };
+
+
+        function drawByName(nameForDraw){
+            google.charts.setOnLoadCallback(drawDashboard);
+            function drawDashboard(){
+                var hotelName = nameForDraw;
+                drawGraphDivs(hotelName);
+                var minData = 6;
+
+                function drawGraphDivs(name){
+                  var docBody = $('body');
+                  docBody.append('<div class="row">' +
+                  '<div class="col s11">' +
+                   "<div id='dashboard_div_" + name + "' " + 'class="card-panel"' + 'style="margin:10px"' + ">"
+                  + '<table class="columns">' + '<tr>' + '<td>' +
+                  '<div id="chartRangeFilter_chart_div_' + name + '" ' + 'class=""' + 'style="height:350px"' + '>' +
+                  '</div>' +
+                  '</td>' + '</tr>' + '<tr>' + '<td>' +
+                  '<div id="chartRangeFilter_control_div_' + name + '"' + 'class=""' + 'style="height:100px"' +'>' + '</div>' +
+                  '</td>' + '</tr>' + '</table>' +
+                  '</div>' + '</div>' +
+//                  '<div class="col s2">' + '<div class="card white black-text z-depth-3">'
+//                  +'</div>' +'</div>' +
+                  '</div>');
+                };
+
+                var dashboard = new google.visualization.Dashboard(document.getElementById('dashboard_div_' + hotelName));
+                var data = new google.visualization.DataTable();
+                data.addColumn('date', 'Month');
+                data.addColumn('number', '0 Stars');
+                data.addColumn('number', '1 Stars');
+                data.addColumn('number', '2 Stars');
+                data.addColumn('number', '3 Stars');
+                data.addColumn('number', '4 Stars');
+                data.addColumn('number', 'Avg Rating');
+
+               function createRows(data, hotelN){
+                 var i = 0;
+                 var num = 0;
+                 while(hotelScore[i] != null){
+                   var row = hotelScore[i];
+                   if(hotelScore[i].hotel == hotelN){
+                     data.addRows([
+                        [new Date(row.month), row.zero, row.one, row.two, row.three, row.four, row.score]
+                      ]);
+                      num++;
+                   };
+                   i++;
+                 };
+                 if(num < 2){
+                   minData = 1;
+                 };
+
+               };
+               createRows(data, hotelName);
+
+              var lineRangeSlider = new google.visualization.ControlWrapper({
+                'controlType': 'ChartRangeFilter',
+                'containerId': 'chartRangeFilter_control_div_' + hotelName,
+                'options': {
+                  'filterColumnLabel': 'Month',
+                  'ui': {
+                    'chartType': 'lineChart',
+                    'chartOptions': {
+                      'chartArea': {'width': '90%'},
+                      'hAxis': {
+                        'baselineColor': 'none',
+                        'format': 'MMMM, y',
+                        'gridlines': {
+                          count: minData,
+                        },
+
+                      }
+                    },
+                    'chartView': {
+                      'columns': [0, 4]
+                    },
+                    'minRangeSize': 5260400000
+                  }
+                },
+                'state': {'range': {'start': null, 'end': null}},
+              });
+              var lineChart = new google.visualization.ChartWrapper({
+                'chartType': 'ComboChart',
+                'containerId': 'chartRangeFilter_chart_div_' + hotelName,
+                'options': {
+                  'chartArea': {'height': '80%', 'width': '80%'},
+                  'hAxis': {
+                    'format': 'MMMM, y',
+                    'gridlines': {
+                      count: minData,
+                    },
+                    'showTextEvery': '1',
+                  },
+                  'vAxis': {
+                     'title': 'Avg Score',
+                     'minValue': 0,
+                   },
+                  'title': hotelName + ' - Rating By Month',
+                  'is3D':true,
+                  legend: {position: 'right', textStyle: {color: 'black', fontSize: 12}},
+                  seriesType: 'bars',
+                  series: {
+                    0: {color: '#DD2C00'},
+                    1: {color: '#F57C00'},
+                    2: {color: '#FFEB3B'},
+                    3: {color: '#18FFFF'},
+                    4: {color: '#64DD17'},
+                    5: {type: 'line', pointShape: 'star'}
+                  },
+                  'ui':{
+                    'minRangeSize': 2867400000,
+                    'chartView': {
+                      'columns': [0, 4]
+                    },
+                  }
+                },
+                'state': {'range': {'start': null, 'end': null}}
+              });
+
+              dashboard.bind(lineRangeSlider, lineChart);
+              dashboard.draw(data);
+        };
+      };
+    callForDraw();
+    </script>
+    <script>
+        $(document).ready(function(){
+            makeHeader();
+        });
+    </script>
+</head>
+<body>
+
+</body>
+</html>
